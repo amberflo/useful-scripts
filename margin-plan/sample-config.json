@@ -1,6 +1,6 @@
 {
     "conditions": {
-        "dim-1": {
+        "instance_type": {
             "C1": {
                 "Instance Type": "a1.large"
             },
@@ -14,7 +14,7 @@
                 "Instance Type": "a1.4xlarge"
             }
         },
-        "dim": {
+        "region": {
             "us-west-2": {
                 "Region Code": "us-west-2"
             }
