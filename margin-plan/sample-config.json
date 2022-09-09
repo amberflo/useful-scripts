@@ -1,0 +1,30 @@
+{
+    "conditions": {
+        "dim-1": {
+            "C1": {
+                "Instance Type": "a1.large"
+            },
+            "C2": {
+                "Instance Type": "a1.xlarge"
+            },
+            "C4": {
+                "Instance Type": "a1.2xlarge"
+            },
+            "C8": {
+                "Instance Type": "a1.4xlarge"
+            }
+        },
+        "dim": {
+            "us-west-2": {
+                "Region Code": "us-west-2"
+            }
+        }
+    },
+    "sources": null,
+    "pre_conditions": null,
+    "meter_api_name": "meter-3",
+    "product_plan_override": {
+        "id": "raw-ec2-cost-2",
+        "productPlanName": "Raw EC2 cost 2"
+    }
+}
