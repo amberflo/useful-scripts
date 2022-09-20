@@ -27,12 +27,14 @@ const pricingPlanIdMap = {
 function makeCustomerPricingPlan(record, customers, pricingPlans) {
     const customer = customers[record['account_id']];
     if (!customer) {
-        throw new Error(`Customer not found: ${record['account_id']}`);
+        console.log('ERROR: customer not found', record['account_id']);
+        return null;
     }
 
     const pricingPlan = pricingPlans[pricingPlanIdMap[record['pricing_plan']]];
     if (!pricingPlan) {
-        throw new Error(`Customer not found: ${record['pricing_plan']}`);
+        console.log('ERROR: pricing plan not found', record['pricing_plan']);
+        return null;
     }
 
     const payload = new CustomerProductPlanApiPayload(
@@ -50,13 +52,17 @@ async function createOrUpdate(payload) {
         if (currentPricingPlan.productPlanId !== payload.productPlanId) {
             console.log('ERROR: different pricing plan', currentPricingPlan);
         } else {
-            console.log('INFO: already assigned', payload);
+            console.log('INFO: already assigned to plan', currentPricingPlan);
         }
         return;
     }
 
-    const result = await customerProductPlanClient.addOrUpdate(payload);
-    console.log('ASSIGNED:', result);
+    try {
+        const result = await customerProductPlanClient.addOrUpdate(payload);
+        console.log('ASSIGNED:', result);
+    } catch (error) {
+        console.log('ERROR:', error.message, payload);
+    }
 }
 
 async function main() {
@@ -67,7 +73,7 @@ async function main() {
         .reduce((acc, c) => { acc[c.id] = c; return acc }, {});
     //console.log(pricingPlans);
 
-    const customerPricingPlans = data.map(x => makeCustomerPricingPlan(x, customers, pricingPlans));
+    const customerPricingPlans = data.map(x => makeCustomerPricingPlan(x, customers, pricingPlans)).filter(x => x);
     //console.log(customerPricingPlans);
 
     for (const cpp of customerPricingPlans) {
