@@ -56,25 +56,31 @@ function makeCustomerPromotion(record, customers, promotions) {
 }
 
 async function createOrUpdate(payload) {
-    const currentPromotion = await customerPromotionApi.doGet(
+    const currentPromotions = await customerPromotionApi.doGet(
         'https://app.amberflo.io/payments/pricing/amberflo/customer-promotions/list',
         { CustomerId: payload.customerId, ProductId: '1' },
     );
 
-    if (currentPromotion) {
-        if (currentPromotion[0].promotionId !== payload.promotionId) {
-            console.log('ERROR: different promotion', currentPromotion);
+    if (currentPromotions && currentPromotions.length > 0) {
+        if (currentPromotions.length > 1) {
+            console.log('ERROR: multiple promotions', currentPromotions);
+        } else if (currentPromotions[0].promotionId !== payload.promotionId) {
+            console.log('ERROR: different promotion', currentPromotions);
         } else  {
-            console.log('INFO: already assigned', payload);
+            console.log('WARN: already assigned', payload);
         }
         return;
     }
 
-    const result = await customerPromotionApi.doPost(
-        'https://app.amberflo.io/payments/pricing/amberflo/customer-promotions',
-        payload,
-    );
-    console.log('ASSIGNED:', result);
+    try {
+        const result = await customerPromotionApi.doPost(
+            'https://app.amberflo.io/payments/pricing/amberflo/customer-promotions',
+            payload,
+        );
+        console.log('ASSIGNED:', result);
+    } catch (error) {
+        console.log('ERROR:', error.message, payload);
+    }
 }
 
 async function main() {
