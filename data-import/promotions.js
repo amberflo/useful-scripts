@@ -40,7 +40,7 @@ function makeCustomerPromotion(record, customers, promotions) {
         promotion = promotions['4a0af6c6-3e72-45cf-9578-7271b461795e'];
 
     } else if (record['compute percent'] !== '0') {
-        promotion = promotions[computePromos[record['compute percent']]]
+        promotion = promotions[computePromos[record['compute percent']]];
     }
 
     if (!promotion) {
@@ -84,11 +84,11 @@ async function createOrUpdate(payload) {
 }
 
 async function main() {
-    const customers = (await customerApi.list()).reduce((acc, c) => { acc[c.id] = c; return acc }, {});
+    const customers = (await customerApi.list()).reduce((acc, c) => { acc[c.id] = c; return acc; }, {});
     //console.log(customers);
 
     const promotions = (await promotionsApi.doGet('/payments/pricing/amberflo/account-pricing/promotions/list'))
-        .reduce((acc, c) => { acc[c.id] = c; return acc }, {});
+        .reduce((acc, c) => { acc[c.id] = c; return acc; }, {});
     //console.log(promotions);
 
     const customerPromotions = data.map(x => makeCustomerPromotion(x, customers, promotions)).filter(x => x);

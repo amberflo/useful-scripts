@@ -66,11 +66,11 @@ async function createOrUpdate(payload) {
 }
 
 async function main() {
-    const customers = (await customerApi.list()).reduce((acc, c) => { acc[c.id] = c; return acc }, {});
+    const customers = (await customerApi.list()).reduce((acc, c) => { acc[c.id] = c; return acc; }, {});
     //console.log(customers);
 
     const pricingPlans = (await pricingPlanApi.doGet('/payments/pricing/amberflo/account-pricing/product-plans/list'))
-        .reduce((acc, c) => { acc[c.id] = c; return acc }, {});
+        .reduce((acc, c) => { acc[c.id] = c; return acc; }, {});
     //console.log(pricingPlans);
 
     const customerPricingPlans = data.map(x => makeCustomerPricingPlan(x, customers, pricingPlans)).filter(x => x);

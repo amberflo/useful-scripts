@@ -11,5 +11,8 @@
   "dependencies": {
     "amberflo-metering-typescript": "^2.5.1",
     "csv": "^6.2.0"
+  },
+  "devDependencies": {
+    "eslint": "^8.17.0"
   }
 }
