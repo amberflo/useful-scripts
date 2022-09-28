@@ -1,8 +1,10 @@
 'use strict';
 
+const maxRate = 8;  // limit number of concurrent requests
+
 const fs = require('fs');
 const csv = require('csv/sync');
-const limit = require('p-limit')(8);
+const limit = require('p-limit')(maxRate);
 const { CustomerDetailsClient } = require('amberflo-metering-typescript');
 
 const apiKey = '';
@@ -15,15 +17,17 @@ const columns = {
     customers: [
         'customer_id',
         'customer_email',
-        'promotion_id',
-        'promotion_name',
-        'promotion_applied_date',
         'current_invoice_start_date',
         'current_invoice_end_date',
         'current_invoice_pricing_plan_id',
         'current_invoice_payment_status',
         'current_invoice_price_status',
-        'current_invoice_total_amount',
+        'current_invoice_item_price',
+        'current_invoice_fix_price',
+        'current_invoice_prepaid_amount',
+        'current_invoice_total_discount',
+        'current_invoice_total_price',
+        'current_invoice_applied_promotion_id',
     ],
     invoices: [
         'customer_id',
@@ -32,13 +36,27 @@ const columns = {
         'pricing_plan_id',
         'payment_status',
         'price_status',
-        'total_amount',
+        'item_price',
+        'fix_price',
+        'prepaid_amount',
+        'total_discount',
+        'total_price',
+        'applied_promotion_id',
     ],
     promotions: [
         'customer_id',
         'id',
         'name',
         'applied_date',
+    ],
+    prepaids: [
+        'customer_id',
+        'payment_id',
+        'payment_status',
+        'price',
+        'worth',
+        'card_type',
+        'start_time',
     ],
 };
 
@@ -47,9 +65,10 @@ async function main() {
         customers: [],
         invoices: [],
         promotions: [],
+        prepaids: [],
     };
 
-    const customers = await cachedGet('/customers');  // if there are too many customers, we need to use the paging endpoint
+    const customers = await cachedGet('/customers');  // use paging endpoint if there are too many customers
     console.log('total customers:', customers.length);
 
     const promotionsMap = (await cachedGet('/payments/pricing/amberflo/account-pricing/promotions/list'))
@@ -70,18 +89,26 @@ async function main() {
 main();
 
 async function getCustomerData(c, data, promotionsMap) {
-    console.log('customer:', c.customerId);
-
     const invoices = (await cachedGet(
         '/payments/billing/customer-product-invoice/all',
         { productId, customerId: c.customerId, fromCache: false, withPaymentStatus: true }
     ))
         .map(formatInvoice);
-    console.log('  invoices:', invoices.length);
 
     const promotions = (await cachedGet('/payments/pricing/amberflo/customer-promotions/list', { CustomerId: c.customerId }))
         .map(x => formatPromotion(x, promotionsMap));
-    console.log('  promotions:', promotions.length);
+
+    const prepaid = await cachedGet('/payments/billing/customer-prepaid-wallet', { customerId: c.customerId });
+    const prepaids = prepaid
+        ? prepaid.prepaidCards.map(x => formatPrepaid(c.customerId, x))
+        : [];
+
+    console.log({
+        customer: c.customerId,
+        invoices: invoices.length,
+        promotions: promotions.length,
+        prepaids: prepaids.length,
+    });
 
     const customer = {
         customer_id: c.customerId,
@@ -96,9 +123,14 @@ async function getCustomerData(c, data, promotionsMap) {
     data.customers.push(customer);
     data.invoices.push(...invoices);
     data.promotions.push(...promotions);
+    data.prepaids.push(...prepaids);
 }
 
 function formatInvoice(x) {
+    if (x.appliedPromotions.length > 1) {
+        console.log('WARN: more than one applied promotion on invoice:', x.invoiceKey);
+    }
+
     return {
         customer_id: x.invoiceKey.customerId,
         start_date: iso(x.invoiceStartTimeInSeconds * 1000),
@@ -106,16 +138,36 @@ function formatInvoice(x) {
         pricing_plan_id: x.invoiceKey.productPlanId,
         payment_status: x.paymentStatus,
         price_status: x.invoicePriceStatus,
-        total_amount: x.totalBill.totalPrice,
+        item_price: x.totalBill.itemPrice,
+        fix_price: x.totalBill.fixPrice,
+        prepaid_amount: x.totalBill.prepaid,
+        total_discount: x.totalBill.totalDiscount,
+        total_price: x.totalBill.totalPrice,
+        applied_promotion_id: x.appliedPromotions[0]?.promotionId,
     };
 }
 
 function formatPromotion(x, promotionsMap) {
+    const p = promotionsMap[x.promotionId];
     return {
         customer_id: x.customerId,
         id: x.promotionId,
-        name: promotionsMap[x.promotionId].promotionName,
+        name: p.promotionName,
         applied_date: iso(x.appliedTimeInSeconds * 1000),
+        type: p.type,
+        duration_cycles: p.promotionTimeLimit.cycles,
+    };
+}
+
+function formatPrepaid(customerId, x) {
+    return {
+        customer_id: customerId,
+        payment_id: x.paymentId,
+        payment_status: x.paymentStatus,
+        price: x.price,
+        worth: x.worth,
+        card_type: x.cardType,
+        start_time: iso(x.startTimeInMillis),
     };
 }
 
@@ -134,10 +186,10 @@ async function cachedGet(path, params = {}) {
     let data;
 
     if (fs.existsSync(filePath)) {
-        console.log('  cache hit:', filePath);
+        //console.log('hit:', filePath);
         data = JSON.parse(fs.readFileSync(filePath));
     } else {
-        console.log('  cache miss:', filePath);
+        //console.log('miss:', filePath);
         data = await rawApi.doGet(path, params);
         fs.writeFileSync(filePath, JSON.stringify(data, null, 4));
     }
