@@ -1,13 +1,13 @@
 'use strict';
 
-const maxRate = 8;  // limit number of concurrent requests
+const maxRate = process.env.CONCURRENCY || 8;  // limit number of concurrent requests
 
 const fs = require('fs');
 const csv = require('csv/sync');
 const limit = require('p-limit')(maxRate);
 const { CustomerDetailsClient } = require('amberflo-metering-typescript');
 
-const apiKey = '';
+const apiKey = process.env.AMBERFLO_API_KEY || '';
 
 const rawApi = new CustomerDetailsClient(apiKey, false);
 
